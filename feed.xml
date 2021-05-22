@@ -1,4 +1,96 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-04-24T14:52:57+08:00</updated><id>/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">Welcome to Jekyll!</title><link href="/cate_test/2021/04/17/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2021-04-17T13:50:44+08:00</published><updated>2021-04-17T13:50:44+08:00</updated><id>/cate_test/2021/04/17/welcome-to-jekyll</id><content type="html" xml:base="/cate_test/2021/04/17/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-05-22T18:05:01+08:00</updated><id>/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">再读BigTable</title><link href="/storage/2021/05/22/bigtable-writeup.html" rel="alternate" type="text/html" title="再读BigTable" /><published>2021-05-22T18:02:00+08:00</published><updated>2021-05-22T18:02:00+08:00</updated><id>/storage/2021/05/22/bigtable-writeup</id><content type="html" xml:base="/storage/2021/05/22/bigtable-writeup.html">&lt;h3 id=&quot;0-引子&quot;&gt;0. 引子&lt;/h3&gt;
+
+&lt;p&gt;Bigtable是2006年Google发表的一篇论文，虽然是2006年的文章，但一些系统设计到现在来看都是非常经典的。时隔多年再读，记录一些想法。&lt;/p&gt;
+
+&lt;h3 id=&quot;1-bigtable的数据模型&quot;&gt;1. BigTable的数据模型&lt;/h3&gt;
+
+&lt;p&gt;数据模型决定了一个系统可以提供怎样的能力，同时也限制了他的应用范围，这是一个tradeoff。Bigtable的数据模型是：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;A Bigtable is a sparse, distributed, persistent multi-dimensional sorted map.
+(row:string, column:string, time:int64) → string&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;总结起来有三个特点：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;string类型的key-value列簇存储。决定了bigtable不是一个强schema类型的存储，系统不知道value里面的结构是怎样的，因此提供的接口只能局限在put/get/del上，而非sql。但相对于强schema的系统，bigtable可以让用户任意的添加column（因为最后都是map成kv来存储），更为灵活。&lt;/li&gt;
+  &lt;li&gt;有序存储。为什么要设计一个全局有序的存储，这一点我们后面再说，毕竟顺序的存储会带来更多的压力和复杂度。&lt;/li&gt;
+  &lt;li&gt;把时间戳单独提出来放到key中。应该是很多业务有这个需求，所以单独提出来了。时间戳也可以作为record的version来看，bigtable利用时间戳可以对record进行一些版本的管理，例如用户可以配置只保留最近&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;n&lt;/code&gt;条最新的数据来减少存储压力。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;一个系统的数据模型往往和他的业务是强绑定的，我们看下当时bigtable主要服务于哪些业务：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Google Analytics， 用来做网站的summary。raw-click table存储用户行为和summary table存储网站summary。&lt;/li&gt;
+  &lt;li&gt;Google Earth，key用来索引图片，value用来存储图片。key通过某种编码方式可以保证地理位置相近的key在有序存储中也相近。&lt;/li&gt;
+  &lt;li&gt;Personalized Search，保存用户搜索记录。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;如果业务只是简单的需要kv 的put/get/del的操作，那其实无需存储就足够了，但我们看到业务在使用的时候，会面临两种情况：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;业务存储的是结构化的数据，例如网站，网站下的网页本质是树形结构组织的，如果要把一棵树平坦化的存储在kv中，就需要这个kv是有序的。对应论文中Webtable场景。&lt;/li&gt;
+  &lt;li&gt;带有时间序列的查询，往往需要按照时间进行排序。 对应Personalized search场景。&lt;/li&gt;
+  &lt;li&gt;地理位置信息，需要将空间的距离映射到kv中的顺序，对应 Google Earth场景。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;对于kv存储，一个有序的存储设计结合&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RangeGet&lt;/code&gt;的接口，就可以构造更加复杂的数据结构。但真的是否需要全局有序，还需要分场景。笔者认为大部分场景下只需要局部有序即可。&lt;/p&gt;
+
+&lt;h3 id=&quot;2-bigtable提供的能力api&quot;&gt;2. BigTable提供的能力（API）&lt;/h3&gt;
+&lt;p&gt;基于有序的kv数据模型，除了经典的put/get/del之外，还提供了如下的能力：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Scan，有序存储嘛&lt;/li&gt;
+  &lt;li&gt;支持单行事务（transaction on single row key）。为什么是单行事务，因为对一个row的操作（即使有多个column）都是对应到一个tablet server上的，所以就是一个单机的事务，leveldb支持atomic batch write, 这里的事务应该和传统database的acid事务应该是不同的。 不支持跨行事务，为什么？因为跨行就是分布式事务了，后续的percolator论文解决了这个问题。&lt;/li&gt;
+  &lt;li&gt;计算下推。设计了Sawzall DSL来在tablet server上执行用户给定的脚本代码（类似在redis上执行lua），这样可以直接在tablet上对数据进行一些transformation。Sawzall也可以用在MapReduce任务中，但现在已经被Lingo取代，具体可以参考&lt;a href=&quot;https://www.unofficialgoogledatascience.com/2015/12/replacing-sawzall-case-study-in-domain.html&quot;&gt;这篇文章&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;可以和mapreduce批处理系统结合，bigtable数据可以作为mapreduce输入或者输出。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在实现上，提供了RowMutation的抽象用来描述对数据的修改（所有操作都认为是一个Operator），和提供了Apply操作来执行这个操作。API的设计不是面向table的，而是面向operation的，table只是作为operation的一个参数。&lt;/p&gt;
+
+&lt;h3 id=&quot;3-bigtable的实现&quot;&gt;3. BigTable的实现&lt;/h3&gt;
+&lt;p&gt;BigTable的实现依赖三个重要组件：leveldb（sstable + memtable)，Chubby，GFS。角色上又分为client, master server, tablet server。&lt;/p&gt;
+
+&lt;p&gt;master server负责分配tablet到tablet server上（记录到MEDATA table中），除此之外还有gfs的垃圾回收，schema change。
+tablet server负责服务tablet，包括对tablet的读，写和分裂。&lt;/p&gt;
+
+&lt;p&gt;由于master只有一个，大部分情况下client不会与master直接交互，client会cache tablet server的地址，数据流上直接与tablet server交互。&lt;/p&gt;
+
+&lt;h4 id=&quot;31-tablet和tablet-location的索引b树&quot;&gt;3.1 Tablet和Tablet Location的索引（B+树）&lt;/h4&gt;
+
+&lt;p&gt;一个Table由若干个tablet构成，tablet表示一段row-range的数据。当查找一个key的时候，如何索引到对应的value数据的位置？ Bigtable采用三层的B+数来维护这个索引。这个三层的B+树也是保存在BigTable的Table中。&lt;/p&gt;
+
+&lt;p&gt;B+树的根节点存储在chubby上，是一个文件，保存了B+树第二层节点的位置。 而第二层节点和第三层节点作为一个特殊的table（成为METADATA table）存储在bigtable中。 METADATA table的key为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;encode(user_tablet_id, tablet_end_key)&lt;/code&gt;， value为对应tablet的location。
+B+树的第二层称为root tablet，root tablet保存了METADATA tablet的location。root tablet永远不分裂，保证B+树为三层。我们可以通过编码key的方式，保证root tablet是METADATA table的第一个tablet。
+每个METADATA tablet大概128MB。这样的话三层的B+树可以索引((128MB/*1K)^2) 2^34 个tablet，也就是2^61Byte的数据。&lt;/p&gt;
+
+&lt;h4 id=&quot;32-tablet的查找&quot;&gt;3.2 Tablet的查找&lt;/h4&gt;
+&lt;p&gt;每个tablet每次只会分配一个一个tablet server，client大部分情况下会cache住，当cachemiss的时候会逐层查找METADATA table。最坏情况下需要6个round trip。&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;1. client read chubby, got root tablet location
+2. client read tablet server that serving root tablet, got OTHER metadata tablets location
+3. client read tablet server that serving other metadata tablet, got tablet location
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;33-tablet-serving&quot;&gt;3.3 Tablet Serving&lt;/h4&gt;
+&lt;p&gt;之所以成为tablet serving而非tablet storage，原因是bigtable使用了shared storage的架构，gfs只负责存储数，不负责服务数据的read/write等。gfs可以看做是一个大块的磁盘，而tablet就是内存中的页，tablet server负责更新页内数据，写回磁盘块。&lt;/p&gt;
+
+&lt;p&gt;数据存储和服务分离。 GFS只负责存储数据，tablet server负责服务数据，任何一个数据不是绑定在某个tablet server上。&lt;/p&gt;
+
+&lt;p&gt;其他技术均参考leveldb实现。&lt;/p&gt;
+
+&lt;h4 id=&quot;34-commit-log-处理&quot;&gt;3.4 commit log 处理&lt;/h4&gt;
+&lt;p&gt;为了防止打开文件过多，每个tablet server只有一个commit log文件。为了防止回放log时读取不必要的tablet的log， master server会协调将commit log按照&amp;lt;table, row name, log sequence number&amp;gt; 进行排序。为了将排序并行化，会把commit log按照64MB的segment大小分别排序。&lt;/p&gt;
+
+&lt;h3 id=&quot;4-一些其他细节&quot;&gt;4. 一些其他细节&lt;/h3&gt;
+&lt;ol&gt;
+  &lt;li&gt;Column Family与Locality Group 有点类似列存的思想，每个locality group保存在一个leveldb的table中，熟悉leveldb的应该知道，locality group内的数据会保存在相同的sst文件中，cache和tablet server读数据的时候效率更高。&lt;/li&gt;
+  &lt;li&gt;多副本？论文中没有讨论&lt;/li&gt;
+  &lt;li&gt;Scan cache&lt;/li&gt;
+  &lt;li&gt;SST 和 memtable（本质上就是leveldb，不再讨论）&lt;/li&gt;
+  &lt;li&gt;group commit, 文件系统的老技术了&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;5-references&quot;&gt;5. References&lt;/h3&gt;
+&lt;ol&gt;
+  &lt;li&gt;https://www.unofficialgoogledatascience.com/2015/12/replacing-sawzall-case-study-in-domain.html&lt;/li&gt;
+&lt;/ol&gt;</content><author><name></name></author><category term="storage" /><summary type="html">0. 引子</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/cate_test/2021/04/17/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2021-04-17T13:50:44+08:00</published><updated>2021-04-17T13:50:44+08:00</updated><id>/cate_test/2021/04/17/welcome-to-jekyll</id><content type="html" xml:base="/cate_test/2021/04/17/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
 
 &lt;p&gt;Jekyll requires blog post files to be named according to the following format:&lt;/p&gt;
 

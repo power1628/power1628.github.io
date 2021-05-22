@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>再读BigTable | Random Thoughts</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="再读BigTable" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="0. 引子" />
+<meta property="og:description" content="0. 引子" />
+<link rel="canonical" href="/storage/2021/05/22/bigtable-writeup.html" />
+<meta property="og:url" content="/storage/2021/05/22/bigtable-writeup.html" />
+<meta property="og:site_name" content="Random Thoughts" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-05-22T18:02:00+08:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="再读BigTable" />
+<script type="application/ld+json">
+{"url":"/storage/2021/05/22/bigtable-writeup.html","headline":"再读BigTable","dateModified":"2021-05-22T18:02:00+08:00","datePublished":"2021-05-22T18:02:00+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"/storage/2021/05/22/bigtable-writeup.html"},"description":"0. 引子","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Random Thoughts" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Random Thoughts</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/archives/">Archives</a><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">再读BigTable</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2021-05-22T18:02:00+08:00" itemprop="datePublished">May 22, 2021
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h3 id="0-引子">0. 引子</h3>
+
+<p>Bigtable是2006年Google发表的一篇论文，虽然是2006年的文章，但一些系统设计到现在来看都是非常经典的。时隔多年再读，记录一些想法。</p>
+
+<h3 id="1-bigtable的数据模型">1. BigTable的数据模型</h3>
+
+<p>数据模型决定了一个系统可以提供怎样的能力，同时也限制了他的应用范围，这是一个tradeoff。Bigtable的数据模型是：</p>
+
+<blockquote>
+  <p>A Bigtable is a sparse, distributed, persistent multi-dimensional sorted map.
+(row:string, column:string, time:int64) → string</p>
+</blockquote>
+
+<p>总结起来有三个特点：</p>
+<ol>
+  <li>string类型的key-value列簇存储。决定了bigtable不是一个强schema类型的存储，系统不知道value里面的结构是怎样的，因此提供的接口只能局限在put/get/del上，而非sql。但相对于强schema的系统，bigtable可以让用户任意的添加column（因为最后都是map成kv来存储），更为灵活。</li>
+  <li>有序存储。为什么要设计一个全局有序的存储，这一点我们后面再说，毕竟顺序的存储会带来更多的压力和复杂度。</li>
+  <li>把时间戳单独提出来放到key中。应该是很多业务有这个需求，所以单独提出来了。时间戳也可以作为record的version来看，bigtable利用时间戳可以对record进行一些版本的管理，例如用户可以配置只保留最近<code class="language-plaintext highlighter-rouge">n</code>条最新的数据来减少存储压力。</li>
+</ol>
+
+<p>一个系统的数据模型往往和他的业务是强绑定的，我们看下当时bigtable主要服务于哪些业务：</p>
+<ol>
+  <li>Google Analytics， 用来做网站的summary。raw-click table存储用户行为和summary table存储网站summary。</li>
+  <li>Google Earth，key用来索引图片，value用来存储图片。key通过某种编码方式可以保证地理位置相近的key在有序存储中也相近。</li>
+  <li>Personalized Search，保存用户搜索记录。</li>
+</ol>
+
+<p>如果业务只是简单的需要kv 的put/get/del的操作，那其实无需存储就足够了，但我们看到业务在使用的时候，会面临两种情况：</p>
+<ol>
+  <li>业务存储的是结构化的数据，例如网站，网站下的网页本质是树形结构组织的，如果要把一棵树平坦化的存储在kv中，就需要这个kv是有序的。对应论文中Webtable场景。</li>
+  <li>带有时间序列的查询，往往需要按照时间进行排序。 对应Personalized search场景。</li>
+  <li>地理位置信息，需要将空间的距离映射到kv中的顺序，对应 Google Earth场景。</li>
+</ol>
+
+<p>对于kv存储，一个有序的存储设计结合<code class="language-plaintext highlighter-rouge">RangeGet</code>的接口，就可以构造更加复杂的数据结构。但真的是否需要全局有序，还需要分场景。笔者认为大部分场景下只需要局部有序即可。</p>
+
+<h3 id="2-bigtable提供的能力api">2. BigTable提供的能力（API）</h3>
+<p>基于有序的kv数据模型，除了经典的put/get/del之外，还提供了如下的能力：</p>
+<ol>
+  <li>Scan，有序存储嘛</li>
+  <li>支持单行事务（transaction on single row key）。为什么是单行事务，因为对一个row的操作（即使有多个column）都是对应到一个tablet server上的，所以就是一个单机的事务，leveldb支持atomic batch write, 这里的事务应该和传统database的acid事务应该是不同的。 不支持跨行事务，为什么？因为跨行就是分布式事务了，后续的percolator论文解决了这个问题。</li>
+  <li>计算下推。设计了Sawzall DSL来在tablet server上执行用户给定的脚本代码（类似在redis上执行lua），这样可以直接在tablet上对数据进行一些transformation。Sawzall也可以用在MapReduce任务中，但现在已经被Lingo取代，具体可以参考<a href="https://www.unofficialgoogledatascience.com/2015/12/replacing-sawzall-case-study-in-domain.html">这篇文章</a></li>
+  <li>可以和mapreduce批处理系统结合，bigtable数据可以作为mapreduce输入或者输出。</li>
+</ol>
+
+<p>在实现上，提供了RowMutation的抽象用来描述对数据的修改（所有操作都认为是一个Operator），和提供了Apply操作来执行这个操作。API的设计不是面向table的，而是面向operation的，table只是作为operation的一个参数。</p>
+
+<h3 id="3-bigtable的实现">3. BigTable的实现</h3>
+<p>BigTable的实现依赖三个重要组件：leveldb（sstable + memtable)，Chubby，GFS。角色上又分为client, master server, tablet server。</p>
+
+<p>master server负责分配tablet到tablet server上（记录到MEDATA table中），除此之外还有gfs的垃圾回收，schema change。
+tablet server负责服务tablet，包括对tablet的读，写和分裂。</p>
+
+<p>由于master只有一个，大部分情况下client不会与master直接交互，client会cache tablet server的地址，数据流上直接与tablet server交互。</p>
+
+<h4 id="31-tablet和tablet-location的索引b树">3.1 Tablet和Tablet Location的索引（B+树）</h4>
+
+<p>一个Table由若干个tablet构成，tablet表示一段row-range的数据。当查找一个key的时候，如何索引到对应的value数据的位置？ Bigtable采用三层的B+数来维护这个索引。这个三层的B+树也是保存在BigTable的Table中。</p>
+
+<p>B+树的根节点存储在chubby上，是一个文件，保存了B+树第二层节点的位置。 而第二层节点和第三层节点作为一个特殊的table（成为METADATA table）存储在bigtable中。 METADATA table的key为<code class="language-plaintext highlighter-rouge">encode(user_tablet_id, tablet_end_key)</code>， value为对应tablet的location。
+B+树的第二层称为root tablet，root tablet保存了METADATA tablet的location。root tablet永远不分裂，保证B+树为三层。我们可以通过编码key的方式，保证root tablet是METADATA table的第一个tablet。
+每个METADATA tablet大概128MB。这样的话三层的B+树可以索引((128MB/*1K)^2) 2^34 个tablet，也就是2^61Byte的数据。</p>
+
+<h4 id="32-tablet的查找">3.2 Tablet的查找</h4>
+<p>每个tablet每次只会分配一个一个tablet server，client大部分情况下会cache住，当cachemiss的时候会逐层查找METADATA table。最坏情况下需要6个round trip。</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. client read chubby, got root tablet location
+2. client read tablet server that serving root tablet, got OTHER metadata tablets location
+3. client read tablet server that serving other metadata tablet, got tablet location
+</code></pre></div></div>
+
+<h4 id="33-tablet-serving">3.3 Tablet Serving</h4>
+<p>之所以成为tablet serving而非tablet storage，原因是bigtable使用了shared storage的架构，gfs只负责存储数，不负责服务数据的read/write等。gfs可以看做是一个大块的磁盘，而tablet就是内存中的页，tablet server负责更新页内数据，写回磁盘块。</p>
+
+<p>数据存储和服务分离。 GFS只负责存储数据，tablet server负责服务数据，任何一个数据不是绑定在某个tablet server上。</p>
+
+<p>其他技术均参考leveldb实现。</p>
+
+<h4 id="34-commit-log-处理">3.4 commit log 处理</h4>
+<p>为了防止打开文件过多，每个tablet server只有一个commit log文件。为了防止回放log时读取不必要的tablet的log， master server会协调将commit log按照&lt;table, row name, log sequence number&gt; 进行排序。为了将排序并行化，会把commit log按照64MB的segment大小分别排序。</p>
+
+<h3 id="4-一些其他细节">4. 一些其他细节</h3>
+<ol>
+  <li>Column Family与Locality Group 有点类似列存的思想，每个locality group保存在一个leveldb的table中，熟悉leveldb的应该知道，locality group内的数据会保存在相同的sst文件中，cache和tablet server读数据的时候效率更高。</li>
+  <li>多副本？论文中没有讨论</li>
+  <li>Scan cache</li>
+  <li>SST 和 memtable（本质上就是leveldb，不再讨论）</li>
+  <li>group commit, 文件系统的老技术了</li>
+</ol>
+
+<h3 id="5-references">5. References</h3>
+<ol>
+  <li>https://www.unofficialgoogledatascience.com/2015/12/replacing-sawzall-case-study-in-domain.html</li>
+</ol>
+
+  </div><a class="u-url" href="/storage/2021/05/22/bigtable-writeup.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Random Thoughts</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Random Thoughts</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/power1628"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">power1628</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
