@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-05-22T18:05:01+08:00</updated><id>/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">再读BigTable</title><link href="/storage/2021/05/22/bigtable-writeup.html" rel="alternate" type="text/html" title="再读BigTable" /><published>2021-05-22T18:02:00+08:00</published><updated>2021-05-22T18:02:00+08:00</updated><id>/storage/2021/05/22/bigtable-writeup</id><content type="html" xml:base="/storage/2021/05/22/bigtable-writeup.html">&lt;h3 id=&quot;0-引子&quot;&gt;0. 引子&lt;/h3&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-05-22T18:09:02+08:00</updated><id>/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">再读BigTable</title><link href="/storage/2021/05/22/bigtable-writeup.html" rel="alternate" type="text/html" title="再读BigTable" /><published>2021-05-22T18:02:00+08:00</published><updated>2021-05-22T18:02:00+08:00</updated><id>/storage/2021/05/22/bigtable-writeup</id><content type="html" xml:base="/storage/2021/05/22/bigtable-writeup.html">&lt;h3 id=&quot;0-引子&quot;&gt;0. 引子&lt;/h3&gt;
 
 &lt;p&gt;Bigtable是2006年Google发表的一篇论文，虽然是2006年的文章，但一些系统设计到现在来看都是非常经典的。时隔多年再读，记录一些想法。&lt;/p&gt;
 
@@ -7,9 +7,10 @@
 &lt;p&gt;数据模型决定了一个系统可以提供怎样的能力，同时也限制了他的应用范围，这是一个tradeoff。Bigtable的数据模型是：&lt;/p&gt;
 
 &lt;blockquote&gt;
-  &lt;p&gt;A Bigtable is a sparse, distributed, persistent multi-dimensional sorted map.
-(row:string, column:string, time:int64) → string&lt;/p&gt;
+  &lt;p&gt;A Bigtable is a sparse, distributed, persistent multi-dimensional sorted map.&lt;/p&gt;
 &lt;/blockquote&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(row:string, column:string, time:int64) → string&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;总结起来有三个特点：&lt;/p&gt;
 &lt;ol&gt;
