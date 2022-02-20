@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>C++ 模板函数类型推倒 | Random Thoughts</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="C++ 模板函数类型推倒" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="1. 模板类型推倒（template argument deduction）" />
+<meta property="og:description" content="1. 模板类型推倒（template argument deduction）" />
+<link rel="canonical" href="/cpp/2022/02/20/cpp-function-template-argument-deduction.html" />
+<meta property="og:url" content="/cpp/2022/02/20/cpp-function-template-argument-deduction.html" />
+<meta property="og:site_name" content="Random Thoughts" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-02-20T13:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="C++ 模板函数类型推倒" />
+<script type="application/ld+json">
+{"@type":"BlogPosting","headline":"C++ 模板函数类型推倒","dateModified":"2022-02-20T13:00:00+00:00","datePublished":"2022-02-20T13:00:00+00:00","mainEntityOfPage":{"@type":"WebPage","@id":"/cpp/2022/02/20/cpp-function-template-argument-deduction.html"},"description":"1. 模板类型推倒（template argument deduction）","url":"/cpp/2022/02/20/cpp-function-template-argument-deduction.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Random Thoughts" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Random Thoughts</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/archives/">Archives</a><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">C++ 模板函数类型推倒</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-02-20T13:00:00+00:00" itemprop="datePublished">Feb 20, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h3 id="1-模板类型推倒template-argument-deduction">1. 模板类型推倒（template argument deduction）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 模板定义</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">P</span> <span class="n">param</span><span class="p">);</span>
+
+<span class="c1">// 函数调用</span>
+<span class="n">A</span> <span class="n">a</span><span class="p">;</span>
+<span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>T和P可能是不同的，P中可能会包含const或者引用等修饰符。</p>
+
+<p>如果模板声明为：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// P是 const T&amp;</span>
+</code></pre></div></div>
+
+<p>调用为：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>T会被推倒为<code class="language-plaintext highlighter-rouge">int</code>，P会被推倒为<code class="language-plaintext highlighter-rouge">const int &amp;</code>.</p>
+
+<p>T的推倒很重要，因为在模板函数的一些变量会被声明为T。</p>
+
+<p>T的推倒不但依赖A，而且依赖P。下面分三种情况讨论T的推倒：</p>
+
+<ul>
+  <li>P是指针或者引用，但不是通用引用（&amp;&amp;）</li>
+  <li>P是通用引用</li>
+  <li>P不是指针也不是引用</li>
+</ul>
+
+<h4 id="2-case-1--p是指针或者引用但不是通用引用">2. Case 1 : P是指针或者引用，但不是通用引用</h4>
+
+<ol>
+  <li>如果A是引用，则忽略引用部分</li>
+  <li>匹配A和P来的到T的类型。</li>
+</ol>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">param</span><span class="p">);</span>  <span class="c1">// P是引用</span>
+<span class="p">...</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">27</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">rx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span> <span class="c1">// A = int, P = T&amp;,  T 是 int, trivial conversion (T -&gt; T&amp;)</span>
+<span class="n">f</span><span class="p">(</span><span class="n">cx</span><span class="p">);</span> <span class="c1">// A = const int, P = T&amp;, T是const int, trivial conversion (T -&gt; T&amp;)</span>
+<span class="n">f</span><span class="p">(</span><span class="n">rx</span><span class="p">);</span> <span class="c1">// A = const int &amp;, P = T&amp;, 去除A的引用部分的到A' = const int, 如果T是int，不可被推倒，因为不存在 const T -&gt; T的trvial conversion. T是const int</span>
+</code></pre></div></div>
+
+<p>比较有趣的是<code class="language-plaintext highlighter-rouge">f(cx)</code>和<code class="language-plaintext highlighter-rouge">f(rx)</code>的例子可以看到，当传入的参数为const时，T也被推倒为const，保持const不变。</p>
+
+<p>以上的例子指针对lvalue引用类型的，但类型推倒对rvalue引用类型同样适用。</p>
+
+<p>我们看看如果P是<code class="language-plaintext highlighter-rouge">const T&amp;</code>会怎样</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// P是const T&amp;</span>
+<span class="p">...</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">27</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">rx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span><span class="c1">// A是int, P = const T&amp;, T 是 int,  trivial conversion(T -&gt; const T&amp;), </span>
+<span class="n">f</span><span class="p">(</span><span class="n">cx</span><span class="p">);</span> <span class="c1">// A是 const int, P = const T&amp;, T 是 int可以被推倒，trivial conversion（T -&gt; T&amp;)</span>
+<span class="n">f</span><span class="p">(</span><span class="n">rx</span><span class="p">);</span> <span class="c1">// A是 const int &amp;, A' = const int,  P = const T&amp;, T是int 可以被推倒, trivial conversion(T -&gt; T&amp;)</span>
+</code></pre></div></div>
+
+<p>如果P是指针类型，也一样适用</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span><span class="o">*</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// P = T*</span>
+<span class="p">...</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">27</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="o">*</span> <span class="n">px</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span> 
+<span class="p">...</span>
+<span class="n">f</span><span class="p">(</span><span class="o">&amp;</span><span class="n">x</span><span class="p">);</span> <span class="c1">// A = int*, P = T*, T = int</span>
+<span class="n">f</span><span class="p">(</span><span class="n">px</span><span class="p">);</span> <span class="c1">// A = const int *, P = T*, T = const int</span>
+</code></pre></div></div>
+
+<p>其实回头想一下，这个规则是非常符合直觉的，如果P是引用或者指针，要保持P的参数在函数内的const不变性。在P上是否声明为const只影响函数内T类型是否为const。</p>
+
+<h4 id="3-case-2-p是通用引用">3. Case 2: P是通用引用</h4>
+
+<p>通用引用在template函数的声明格式如下：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">param</span><span class="p">);</span> 
+</code></pre></div></div>
+
+<p>格式看起来是右值引用，但是在模板函数的语境下，表示通用引用。如其名字，通用引用，既可以表示左值又可以表示右值引用，但对两者的规则不同。</p>
+
+<ol>
+  <li>如果A是<code class="language-plaintext highlighter-rouge">lvalue</code>，T和P都会被推倒为<code class="language-plaintext highlighter-rouge">lvalue reference</code>。这是T唯一可以被推倒为<code class="language-plaintext highlighter-rouge">reference</code>类型的场景。虽然P是<code class="language-plaintext highlighter-rouge">&amp;&amp;</code>的格式，但是被推倒的类型是<code class="language-plaintext highlighter-rouge">lvalue</code>.</li>
+  <li>如果A是<code class="language-plaintext highlighter-rouge">rvalue</code>，转为<code class="language-plaintext highlighter-rouge">case 1</code>处理。</li>
+</ol>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">param</span><span class="p">);</span>
+<span class="p">...</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">27</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">rx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span> <span class="c1">// x is lvalue, A = int, P = T&amp;, T = int</span>
+<span class="n">f</span><span class="p">(</span><span class="n">cx</span><span class="p">);</span> <span class="c1">// x is lvalue, A = const int, P = T&amp;, T = const int &amp;， T被推倒为reference</span>
+<span class="n">f</span><span class="p">(</span><span class="n">rx</span><span class="p">);</span> <span class="c1">// x is lvalue, A = const int&amp;, P = T&amp;, T = const int &amp; ， T被推倒为reference</span>
+<span class="n">f</span><span class="p">(</span><span class="mi">27</span><span class="p">);</span> <span class="c1">// x is rvalue, goto case 1, A = int, P = T&amp;&amp;, T = int</span>
+</code></pre></div></div>
+
+<h4 id="4--case-3p不是指针也不是引用">4.  case 3：P不是指针，也不是引用。</h4>
+
+<p>如果P不是指针，也不是引用，那么我们正在处理的就是<code class="language-plaintext highlighter-rouge">pass-by-value</code>这种形式，所以在做推倒的时候，要保持<code class="language-plaintext highlighter-rouge">pass-by-value</code>的语意，也就是函数的参数是一份拷贝来处理。</p>
+
+<ol>
+  <li>如果A是引用类型，则忽略引用部分。</li>
+  <li>在出去引用部分后，再除去最外层的<code class="language-plaintext highlighter-rouge">const</code>和<code class="language-plaintext highlighter-rouge">volatile</code>修饰符。和P做对比，得到T。</li>
+</ol>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span> <span class="n">param</span><span class="p">);</span>
+<span class="p">...</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">27</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">rx</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+
+<span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span> <span class="c1">// P = T = int</span>
+<span class="n">f</span><span class="p">(</span><span class="n">cx</span><span class="p">);</span> <span class="c1">// A = const int, A' = int, P = T, T = int</span>
+<span class="n">f</span><span class="p">(</span><span class="n">rx</span><span class="p">);</span> <span class="c1">// A = const int &amp;, A' = int, P = T, T = int</span>
+</code></pre></div></div>
+
+<p>也就是除去A的reference，和最外层 cv修饰符，因为要保证<code class="language-plaintext highlighter-rouge">pass-by-value</code>的语意。</p>
+
+<h4 id="5-array和function类型的推倒">5. Array和Function类型的推倒</h4>
+
+<p>P可以是Array的引用类型，或者是array衰退后的指针类型。</p>
+
+<p>当P不是Array引用类型时，P可以衰退为Array的指针类型。</p>
+
+<p>当P是Array的引用类型时，P可以表示Array的引用类型。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">/////// pass-by-value</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// pass-by-value</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="n">name</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"J. P. Briggs"</span><span class="p">;</span> <span class="c1">// type of const char[13]</span>
+<span class="n">f</span><span class="p">(</span><span class="n">name</span><span class="p">);</span> <span class="c1">// T is const char*</span>
+<span class="c1">/////// pass-by-reference</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// pass-by-reference</span>
+<span class="n">f</span><span class="p">(</span><span class="n">name</span><span class="p">);</span> <span class="c1">// P可以是Array类型的引用，所以不用衰退。P 是 const char[13]&amp;, T是 const char[13]</span>
+</code></pre></div></div>
+
+<p>当A是函数类型时，推倒过程中，函数类型会衰退为<code class="language-plaintext highlighter-rouge">ptr-to-func</code>或者<code class="language-plaintext highlighter-rouge">ref-to-func</code>类型。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">someFunc</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">double</span><span class="p">);</span> <span class="c1">// type is void(int, double)</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f1</span><span class="p">(</span><span class="n">T</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// pass-by-value</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">f2</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">param</span><span class="p">);</span> <span class="c1">// pass-by-reference</span>
+
+<span class="n">f1</span><span class="p">(</span><span class="n">someFunc</span><span class="p">);</span> <span class="c1">// P is ptr-to-func, T is void(*)(int, double)</span>
+<span class="n">f2</span><span class="p">(</span><span class="n">someFunc</span><span class="p">);</span> <span class="c1">// P is ref-to-func, T is void(&amp;)(int, double)</span>
+</code></pre></div></div>
+
+<h4 id="reference">Reference</h4>
+
+<p>[1] Effective Modern C++</p>
+
+
+  </div><a class="u-url" href="/cpp/2022/02/20/cpp-function-template-argument-deduction.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Random Thoughts</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Random Thoughts</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/power1628"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">power1628</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
