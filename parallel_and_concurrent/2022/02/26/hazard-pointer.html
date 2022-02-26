@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Hazard Pointer | Random Thoughts</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Hazard Pointer" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="1. Hazard Pointer要解决什么问题" />
+<meta property="og:description" content="1. Hazard Pointer要解决什么问题" />
+<link rel="canonical" href="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html" />
+<meta property="og:url" content="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html" />
+<meta property="og:site_name" content="Random Thoughts" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-02-26T07:53:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Hazard Pointer" />
+<script type="application/ld+json">
+{"@type":"BlogPosting","headline":"Hazard Pointer","dateModified":"2022-02-26T07:53:00+00:00","datePublished":"2022-02-26T07:53:00+00:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html"},"description":"1. Hazard Pointer要解决什么问题","url":"https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://power1628.github.io/feed.xml" title="Random Thoughts" /><script>
+if(!(window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1")) {
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-40862585-3', 'auto');
+  ga('send', 'pageview');
+}
+</script>
+  
+</head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Random Thoughts</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/archives/">Archives</a><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Hazard Pointer</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-02-26T07:53:00+00:00" itemprop="datePublished">Feb 26, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h3 id="1-hazard-pointer要解决什么问题">1. Hazard Pointer要解决什么问题</h3>
+
+<p>Hazard Pointer主要解决了在一个共享数据结构上，读多写少，单写多读的情况下，如何实现无锁的读写操作。</p>
+
+<p>考虑下面一个场景，有一个Map的数据结构，需要实现在多线程下无锁的读写操作，具体来说，单写多读，且读多写少。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Write Rarely Read Mostly map</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">K</span><span class="p">,</span> <span class="k">class</span> <span class="nc">V</span><span class="p">&gt;</span>
+<span class="k">class</span> <span class="nc">WRRMMap</span> <span class="p">{</span> 
+	<span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">pMap_</span><span class="p">;</span>
+  <span class="p">...</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>一个常用的实现方法是，多个线程共享指向<code class="language-plaintext highlighter-rouge">Map</code>的指针<code class="language-plaintext highlighter-rouge">pMap_</code>，当写的时候，构造一个<code class="language-plaintext highlighter-rouge">pMap</code>指向对象的拷贝<code class="language-plaintext highlighter-rouge">pMapNew</code>，对这个拷贝做更新操作，更新完成后使用一个原子操作替换<code class="language-plaintext highlighter-rouge">pMap</code>指针。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">pNew</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+<span class="k">do</span> <span class="p">{</span>
+  <span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">pOld</span> <span class="o">=</span> <span class="n">pMap_</span><span class="p">;</span>
+  <span class="k">delete</span> <span class="n">pNew</span><span class="p">;</span>
+  <span class="n">pNew</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;</span><span class="p">(</span><span class="o">*</span><span class="n">pOld</span><span class="p">);</span> <span class="c1">// make a copy</span>
+  <span class="p">(</span><span class="o">*</span><span class="n">pNew</span><span class="p">)[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span> <span class="c1">// do update</span>
+<span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pMap_</span><span class="p">,</span> <span class="n">pOld</span><span class="p">,</span> <span class="n">pNew</span><span class="p">));</span> <span class="c1">// atomic update pMap_ pointer</span>
+</code></pre></div></div>
+
+<p>但这样带来的问题是，<code class="language-plaintext highlighter-rouge">pOld</code>指针什么时候回收？因为此时<code class="language-plaintext highlighter-rouge">pOld</code>可能正在被其他读线程引用，如果在写线程里回收，会出现读线程访问一个不存在地址的错误。</p>
+
+<p>这就是Hazard Pointer要解决的问题。整体解决思路是，对于共享的指针，维护一个全局的读列表（所有线程可见），记录读的指针。每个线程维护一个对于共享指针的写列表，记录<code class="language-plaintext highlighter-rouge">pOld</code>。当写线程更新完之后，先把<code class="language-plaintext highlighter-rouge">pOld</code>记录下来，然后定期去触发检查回收已经不被读的<code class="language-plaintext highlighter-rouge">pOld</code>。</p>
+
+<h3 id="2-hazard-pointer的设计">2. Hazard Pointer的设计</h3>
+
+<p>每次对共享数据结构读的时候，返回一个Hazard Pointer Record，其中包装了具体的指针。同时需要把这个pointer连接记录当前正在读的pointer列表中，具体实现是一个单向链表。</p>
+
+<p>这个单向链表本质上是一个<code class="language-plaintext highlighter-rouge">Hazard Pointer Record</code>对象的池子，只有标记为<code class="language-plaintext highlighter-rouge">active</code>的<code class="language-plaintext highlighter-rouge">HPRecType</code>才表示当前正在被读。</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Acquire()</code>：从池子中获取一个非<code class="language-plaintext highlighter-rouge">active</code>的 <code class="language-plaintext highlighter-rouge">HPRecType p</code>，或创建一个新的<code class="language-plaintext highlighter-rouge">HprecType</code>同时连接到池子中。用户可以调用<code class="language-plaintext highlighter-rouge">p-&gt;pHazard</code>来设置具体指针内容。</li>
+  <li><code class="language-plaintext highlighter-rouge">Release(p)</code>: 当读操作结束后，调用<code class="language-plaintext highlighter-rouge">Release</code>来释放到池子中，同时标记为非<code class="language-plaintext highlighter-rouge">active</code>。</li>
+</ul>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Hazard Pointer record</span>
+<span class="k">class</span> <span class="nc">HPRecType</span> <span class="p">{</span>
+  <span class="n">HPRecType</span> <span class="o">*</span> <span class="n">pNext_</span><span class="p">;</span> <span class="c1">// 链表的下一个节点</span>
+  <span class="kt">int</span> <span class="n">active_</span><span class="p">;</span> <span class="c1">// 当前这个指针是否是正在被读。</span>
+  
+  <span class="c1">// Global header of the HP list</span>
+  <span class="k">static</span> <span class="n">HPRecType</span><span class="o">*</span> <span class="n">pHead_</span><span class="p">;</span> <span class="c1">// 链表的头</span>
+  <span class="c1">// The length of the list</span>
+  <span class="k">static</span> <span class="kt">int</span> <span class="n">listLen_</span><span class="p">;</span> <span class="c1">// 链表长度</span>
+ <span class="nl">public:</span>
+  <span class="c1">// Can be used by the thread that acquired it</span>
+  <span class="kt">void</span> <span class="o">*</span> <span class="n">pHazard_</span><span class="p">;</span> <span class="c1">// 存储共享数据结构指针</span>
+  
+  <span class="k">static</span> <span class="n">HPRecType</span> <span class="o">*</span> <span class="n">Head</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">pHead_</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="c1">// Acquires one hazard pointer</span>
+  <span class="k">static</span> <span class="n">HPRecType</span><span class="o">*</span> <span class="n">Acquire</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// Try to reuse a retired HP Record</span>
+    <span class="n">HPRecType</span> <span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">pHead_</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(;</span> <span class="n">p</span><span class="p">;</span> <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">pNext_</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">active_</span> <span class="o">||</span> <span class="o">!</span> <span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">active_</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">continue</span><span class="p">;</span>
+      <span class="c1">// Got one retired HP Record</span>
+      <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// If there's no HP Record available, </span>
+    <span class="c1">// allocate one and increment the list length</span>
+    <span class="kt">int</span> <span class="n">oldLen</span><span class="p">;</span>
+    <span class="k">do</span> <span class="p">{</span>
+      <span class="n">oldLen</span> <span class="o">=</span> <span class="n">listLen_</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">listLen_</span><span class="p">,</span> <span class="n">oldLen</span><span class="p">,</span> <span class="n">oldLen</span><span class="o">+</span><span class="mi">1</span><span class="p">));</span>
+    
+    <span class="c1">// Allocate new one</span>
+    <span class="n">HPRecType</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HPRecType</span><span class="p">;</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">active_</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">pHazard_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+    <span class="c1">// Push it to the front</span>
+    <span class="k">do</span> <span class="p">{</span>
+      <span class="n">old</span> <span class="o">=</span> <span class="n">pHead_</span><span class="p">;</span>
+      <span class="n">p</span><span class="o">-&gt;</span><span class="n">pNext_</span> <span class="o">=</span> <span class="n">old</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pHead_</span><span class="p">,</span> <span class="n">old</span><span class="p">,</span> <span class="n">p</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="c1">// Release a hazard pointer</span>
+  <span class="k">static</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">(</span><span class="n">HPRecType</span><span class="o">*</span> <span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">pHazard_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">active_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>同时，对于每个线程需要维护一个写过的pointer的列表，称为<strong>Retired List</strong>，列表中的元素表示当没有读线程引用这个指针的时候，这个指针可以被回收了。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Per-thread private variable</span>
+<span class="k">thread_local</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*&gt;</span> <span class="n">rlist</span><span class="p">;</span> <span class="c1">// retired list</span>
+</code></pre></div></div>
+
+<p>所以说，在WRRMMap中需要提供一个<code class="language-plaintext highlighter-rouge">Retire</code>函数。其</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">K</span><span class="p">,</span> <span class="k">class</span> <span class="nc">V</span><span class="p">&gt;</span>
+ <span class="k">class</span> <span class="nc">WRRMMap</span> <span class="p">{</span>
+  	<span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="o">*</span><span class="n">pMap_</span><span class="p">;</span>
+   <span class="p">...</span>
+ <span class="nl">private:</span>
+   <span class="k">static</span> <span class="kt">void</span> <span class="n">Retire</span><span class="p">(</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">pOld</span><span class="p">)</span> <span class="p">{</span>
+     <span class="c1">// Put it in the retired list</span>
+     <span class="n">rlist</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pOld</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">rlist</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">R</span><span class="p">)</span> <span class="p">{</span>
+       <span class="n">Scan</span><span class="p">(</span><span class="n">HPRecType</span><span class="o">::</span><span class="n">Head</span><span class="p">());</span> <span class="c1">// 对比读写列表的差异，回收没有被读的同时retired的指针</span>
+     <span class="p">}</span>
+   <span class="p">}</span>
+ <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Scan的过程就是找到当前Retired List中没有被正在读的指针，回收。具体实现有两点优化：</p>
+
+<ol>
+  <li>选择链表中非空的指针（也就是当前正在被读的），排序，二分查找retired的是否出现在其中；也可以用哈希表来维护<code class="language-plaintext highlighter-rouge">hp</code>，查找效率更高。</li>
+  <li>rlist是一个vector，释放其中元素的时候，先将要删除的元素和最后一个元素交换，然后再<code class="language-plaintext highlighter-rouge">pop_back()</code></li>
+</ol>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">Scan</span><span class="p">(</span><span class="n">HPRecType</span><span class="o">*</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// Stage 1: Scan hazard pointers list collecting all non-null ptrs</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">*&gt;</span> <span class="n">hp</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">pHazard_</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">hp</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">pNext_</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="c1">// Stage 2: sort the hazard pointers</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">hp</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">hp</span><span class="p">.</span><span class="n">end</span><span class="p">()),</span> <span class="n">std</span><span class="o">::</span><span class="n">less</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">*&gt;</span><span class="p">());</span>
+  <span class="c1">// Stage 3: set intersect</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*&gt;::</span><span class="n">iterator</span> <span class="n">i</span> <span class="o">=</span> <span class="n">rlist</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">i</span> <span class="o">!=</span> <span class="n">rlist</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">binary_search</span><span class="p">(</span><span class="n">hp</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">hp</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="o">*</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// retired pointer not found in hazard pointer sets</span>
+      <span class="c1">// safe to delete</span>
+      <span class="k">delete</span> <span class="o">*</span><span class="n">i</span><span class="p">;</span>
+      <span class="c1">// remove from rlist</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">&amp;*</span><span class="n">i</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">rlist</span><span class="p">.</span><span class="n">back</span><span class="p">())</span> <span class="p">{</span>
+        <span class="o">*</span><span class="n">i</span> <span class="o">=</span> <span class="n">rlist</span><span class="p">.</span><span class="n">back</span><span class="p">();</span>
+      <span class="p">}</span>
+      <span class="n">rlist</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="o">++</span><span class="n">i</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>如果用哈希表来维护<code class="language-plaintext highlighter-rouge">hp</code>的话，Scan的复杂度就是<code class="language-plaintext highlighter-rouge">O(R)</code>，<code class="language-plaintext highlighter-rouge">R</code>也就是触发<code class="language-plaintext highlighter-rouge">Scan</code>时,<code class="language-plaintext highlighter-rouge">rlist</code>的大小。那<code class="language-plaintext highlighter-rouge">R</code>的值一般怎么选择的？一个比较好的选择是<code class="language-plaintext highlighter-rouge">R = (1+k)H</code>其中H表示读线程数（也是harzard pointer的数目），k一般是一个比较小的值（如0.25)。</p>
+
+<p>应用到WRRMMap中代码如下：</p>
+
+<p>对于更新操作</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">Update</span><span class="p">(</span><span class="k">const</span> <span class="n">K</span><span class="o">&amp;</span> <span class="n">k</span><span class="p">,</span> <span class="k">const</span> <span class="n">V</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="o">*</span> <span class="n">pNew</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+  <span class="k">do</span> <span class="p">{</span> 
+  	<span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">pOld</span> <span class="o">=</span> <span class="n">pMap_</span><span class="p">;</span>
+    <span class="k">delete</span> <span class="n">pNew</span><span class="p">;</span>
+    <span class="n">pNew</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;</span><span class="p">(</span><span class="o">*</span><span class="n">pOld</span><span class="p">);</span>
+    <span class="p">(</span><span class="o">*</span><span class="n">pNew</span><span class="p">)[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pMap_</span><span class="p">,</span> <span class="n">pOld</span><span class="p">,</span> <span class="n">pNew</span><span class="p">));</span>  <span class="c1">// 为了应对多线程的写</span>
+  <span class="n">Retire</span><span class="p">(</span><span class="n">pOld</span><span class="p">);</span> <span class="c1">// 标记到rlist中</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>对于读操作：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">V</span> <span class="nf">Lookup</span><span class="p">(</span><span class="k">const</span> <span class="n">K</span><span class="o">&amp;</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">HPRecType</span><span class="o">*</span> <span class="n">pRec</span> <span class="o">=</span> <span class="n">HPRecType</span><span class="o">::</span><span class="n">Acquire</span><span class="p">();</span>
+  <span class="n">Map</span><span class="o">&lt;</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="o">&gt;*</span> <span class="n">ptr</span><span class="p">;</span>
+  <span class="k">do</span> <span class="p">{</span>
+    <span class="n">ptr</span> <span class="o">=</span> <span class="n">pMap_</span><span class="p">;</span>
+    <span class="n">pRec</span><span class="o">-&gt;</span><span class="n">pHazard_</span> <span class="o">=</span> <span class="n">ptr</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">pMap_</span> <span class="o">!=</span> <span class="n">ptr</span><span class="p">);</span> <span class="c1">//这里要check，因为可能在执行完ptr=pMap_之后，优于线程切换，导致另外一个线程修改了pMap_的值在例如Update的CAS中。</span>
+  <span class="n">V</span> <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">ptr</span><span class="p">)[</span><span class="n">k</span><span class="p">];</span>
+  <span class="c1">// Release</span>
+ 	<span class="n">HPRecType</span><span class="o">::</span><span class="n">Release</span><span class="p">(</span><span class="n">pRec</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>这里，Lookup的实现是LockFree，但不是WaitFree的，因为<code class="language-plaintext highlighter-rouge">do {} while()</code>的存在。对于这个问题在[2]中提出了trap的方法实现了WaitFree的读。</p>
+
+<p>以上，利用了Hazard Pointer，实现了Lock-Free的读多写少场景下的Map。</p>
+
+<h3 id="3-references">3. References</h3>
+
+<p>[1] Lock-Free Data Structure with Hazard Pointer. 2004</p>
+
+<p>[2] Maged M. Michael. Practical Lock-Free and Wait- Free LL/SC/VL Implementations Using 64-Bit CAS. In Proceedings of the 18th International Conference on Distributed Computing, LNCS vol- ume 3274, pages 144–158, October 2004.</p>
+
+  </div><div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function () {
+      this.page.url = 'https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html';
+      this.page.identifier = 'https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html';
+    };
+
+    (function() {
+      var d = document, s = d.createElement('script');
+
+      s.src = 'https://https-power1628-github-io.disqus.com/embed.js';
+
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript><a class="u-url" href="/parallel_and_concurrent/2022/02/26/hazard-pointer.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Random Thoughts</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Random Thoughts</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/power1628"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">power1628</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
