@@ -61,9 +61,9 @@ if(!(window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNo
   <div class="post-content e-content" itemprop="articleBody">
     <h3 id="1-hazard-pointer要解决什么问题">1. Hazard Pointer要解决什么问题</h3>
 
-<p>Hazard Pointer主要解决了在一个共享数据结构上，读多写少，单写多读的情况下，如何实现无锁的读写操作。</p>
+<p>Hazard Pointer主要解决了在一个共享数据结构上，读多写少情况下，如何实现无锁的读写操作。</p>
 
-<p>考虑下面一个场景，有一个Map的数据结构，需要实现在多线程下无锁的读写操作，具体来说，单写多读，且读多写少。</p>
+<p>考虑下面一个场景，有一个Map的数据结构，需要实现在多线程下无锁的操作。</p>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Write Rarely Read Mostly map</span>
 <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">K</span><span class="p">,</span> <span class="k">class</span> <span class="nc">V</span><span class="p">&gt;</span>
