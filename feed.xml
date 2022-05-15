@@ -1,4 +1,105 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="https://power1628.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://power1628.github.io/" rel="alternate" type="text/html" /><updated>2022-02-26T07:59:28+00:00</updated><id>https://power1628.github.io/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">Hazard Pointer</title><link href="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html" rel="alternate" type="text/html" title="Hazard Pointer" /><published>2022-02-26T07:53:00+00:00</published><updated>2022-02-26T07:53:00+00:00</updated><id>https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer</id><content type="html" xml:base="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html">&lt;h3 id=&quot;1-hazard-pointer要解决什么问题&quot;&gt;1. Hazard Pointer要解决什么问题&lt;/h3&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="https://power1628.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://power1628.github.io/" rel="alternate" type="text/html" /><updated>2022-05-15T03:07:56+00:00</updated><id>https://power1628.github.io/feed.xml</id><title type="html">Random Thoughts</title><entry><title type="html">Rust中的Deref</title><link href="https://power1628.github.io/rust/2022/05/14/rust-deref.html" rel="alternate" type="text/html" title="Rust中的Deref" /><published>2022-05-14T10:02:00+00:00</published><updated>2022-05-14T10:02:00+00:00</updated><id>https://power1628.github.io/rust/2022/05/14/rust-deref</id><content type="html" xml:base="https://power1628.github.io/rust/2022/05/14/rust-deref.html">&lt;h3 id=&quot;1-pointer-tpes&quot;&gt;1. Pointer Tpes&lt;/h3&gt;
+
+&lt;p&gt;Rust中的Pointer也是value，可以被&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;move&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy&lt;/code&gt;作为struct中的一个成员或者作为函数的返回值。&lt;/p&gt;
+
+&lt;p&gt;Rust中的Pointer有：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Reference : &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;&lt;/code&gt;和&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;mut&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;shared reference
+        &lt;ul&gt;
+          &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;type&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;'a type&lt;/code&gt;&lt;/li&gt;
+          &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Copy&lt;/code&gt;的，拷贝的是指针&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;mutable reference
+        &lt;ul&gt;
+          &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;mut type&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;mut 'a type&lt;/code&gt;&lt;/li&gt;
+          &lt;li&gt;Not &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Copy&lt;/code&gt;&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Raw pointer : &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*const&lt;/code&gt;和&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*mut&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;没有safety和liveness的保证&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*const T&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*mut T&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;deref是unsafe的&lt;/li&gt;
+      &lt;li&gt;reborrow：把raw pointer转为reference, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;*&lt;/code&gt; 或&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;mut *&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;对DST(&lt;a href=&quot;https://doc.rust-lang.org/reference/dynamically-sized-types.html&quot;&gt;Dynamic Sized Type&lt;/a&gt;) 指针的比较会比较额外的数据，对&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Sized&lt;/code&gt;指针的 比较只比较指针。&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;core::ptr::addr_of!&lt;/code&gt;创建&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*const&lt;/code&gt;指针，&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;core::ptr::addr_of_mut!&lt;/code&gt;创建&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*mut&lt;/code&gt;指针&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;标准库中的Smart pointer : &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Box&amp;lt;T&amp;gt;&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Rc&amp;lt;T&amp;gt;&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Ref&amp;lt;T&amp;gt;&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RefMut&amp;lt;T&amp;gt;&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Arc&amp;lt;T&amp;gt;&lt;/code&gt;等&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;2-deref-operator&quot;&gt;2. Deref Operator&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-dereference-operator&quot;&gt;Dereference Operator的定义&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Syntax&lt;/strong&gt;
+&lt;em&gt;DereferenceExpression&lt;/em&gt; :
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*&lt;/code&gt; &lt;a href=&quot;https://doc.rust-lang.org/reference/expressions.html&quot;&gt;&lt;em&gt;Expression&lt;/em&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;当expr是&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pointer&lt;/code&gt;类型时，返回pointer指向的memory location。如果expr是&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;mut T&lt;/code&gt; 或者 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*mut&lt;/code&gt; 的，那么返回的memory location可以被assigned to。deref一个raw pointer是unsafe的.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;当expr不是pointer类型时，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*x&lt;/code&gt;等价于&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*std::ops::Deref::deref(&amp;amp;x)&lt;/code&gt;或&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*std::ops::DerefMut::deref_mut(&amp;amp;mut x)&lt;/code&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;3-stdopsderef&quot;&gt;3. &lt;a href=&quot;https://doc.rust-lang.org/std/ops/trait.Deref.html&quot;&gt;std::ops::Deref&lt;/a&gt;&lt;/h3&gt;
+
+&lt;p&gt;和deref operator一样。注意deref的函数签名， deref的参数是&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;ref&lt;/code&gt;，返回值是&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;Self::Target&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-rust highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;pub&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;trait&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Deref&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Sized&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;deref&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nn&quot;&gt;Self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;	
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;当&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;x&lt;/code&gt;不是pointer的时候，Deref的过程：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;先对&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;x&lt;/code&gt;取一个reference&lt;/li&gt;
+  &lt;li&gt;然后再对reference调用deref函数，返回一个&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;Target&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;再对&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;Target&lt;/code&gt; deref。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;之所以返回&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;&lt;/code&gt;，是因为rust的ownership系统，如果返回value，则相当于把target 从self中move出去了，有时候这不是一个预期的行为。&lt;/p&gt;
+
+&lt;p&gt;Coercion: 若&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;T: Deref&amp;lt;Target = U&amp;gt;&lt;/code&gt;，那么&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;T&lt;/code&gt;会被自动转换为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;U&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;比较有趣的是，rust实现了&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;T: Deref&amp;lt;Target =T&amp;gt;&lt;/code&gt;，也就是&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;&amp;amp;T&lt;/code&gt; 自动转换为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;T&lt;/code&gt;。&lt;/p&gt;
+
+&lt;div class=&quot;language-rust highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;#[stable(feature&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;rust1&quot;&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;since&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;1.0.0&quot;&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;)]&lt;/span&gt;
+&lt;span class=&quot;nd&quot;&gt;#[rustc_const_unstable(feature&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;const_deref&quot;&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;issue&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;88955&quot;&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;)]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;impl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Sized&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Deref&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Target&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    &lt;span class=&quot;nd&quot;&gt;#[rustc_diagnostic_item&lt;/span&gt; &lt;span class=&quot;nd&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;noop_method_deref&quot;&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;deref&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;self&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;所以以下代码是work的&lt;/p&gt;
+
+&lt;div class=&quot;language-rust highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;'a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;'a&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;'a&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&amp;amp;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;let&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;input&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;from&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;hello&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nf&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;</content><author><name></name></author><category term="rust" /><summary type="html">1. Pointer Tpes</summary></entry><entry><title type="html">Hazard Pointer</title><link href="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html" rel="alternate" type="text/html" title="Hazard Pointer" /><published>2022-02-26T07:53:00+00:00</published><updated>2022-02-26T07:53:00+00:00</updated><id>https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer</id><content type="html" xml:base="https://power1628.github.io/parallel_and_concurrent/2022/02/26/hazard-pointer.html">&lt;h3 id=&quot;1-hazard-pointer要解决什么问题&quot;&gt;1. Hazard Pointer要解决什么问题&lt;/h3&gt;
 
 &lt;p&gt;Hazard Pointer主要解决了在一个共享数据结构上，读多写少情况下，如何实现无锁的读写操作。&lt;/p&gt;
 

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Rust中的Deref | Random Thoughts</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Rust中的Deref" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="1. Pointer Tpes" />
+<meta property="og:description" content="1. Pointer Tpes" />
+<link rel="canonical" href="https://power1628.github.io/rust/2022/05/14/rust-deref.html" />
+<meta property="og:url" content="https://power1628.github.io/rust/2022/05/14/rust-deref.html" />
+<meta property="og:site_name" content="Random Thoughts" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-05-14T10:02:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Rust中的Deref" />
+<script type="application/ld+json">
+{"@type":"BlogPosting","mainEntityOfPage":{"@type":"WebPage","@id":"https://power1628.github.io/rust/2022/05/14/rust-deref.html"},"url":"https://power1628.github.io/rust/2022/05/14/rust-deref.html","headline":"Rust中的Deref","dateModified":"2022-05-14T10:02:00+00:00","description":"1. Pointer Tpes","datePublished":"2022-05-14T10:02:00+00:00","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://power1628.github.io/feed.xml" title="Random Thoughts" /><script>
+if(!(window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1")) {
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-40862585-3', 'auto');
+  ga('send', 'pageview');
+}
+</script>
+  
+</head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Random Thoughts</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/archives/">Archives</a><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Rust中的Deref</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-05-14T10:02:00+00:00" itemprop="datePublished">May 14, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h3 id="1-pointer-tpes">1. Pointer Tpes</h3>
+
+<p>Rust中的Pointer也是value，可以被<code class="language-plaintext highlighter-rouge">move</code>,<code class="language-plaintext highlighter-rouge">copy</code>作为struct中的一个成员或者作为函数的返回值。</p>
+
+<p>Rust中的Pointer有：</p>
+
+<ul>
+  <li>Reference : <code class="language-plaintext highlighter-rouge">&amp;</code>和<code class="language-plaintext highlighter-rouge">&amp;mut</code>
+    <ul>
+      <li>shared reference
+        <ul>
+          <li><code class="language-plaintext highlighter-rouge">&amp;type</code> or <code class="language-plaintext highlighter-rouge">&amp;'a type</code></li>
+          <li><code class="language-plaintext highlighter-rouge">Copy</code>的，拷贝的是指针</li>
+        </ul>
+      </li>
+      <li>mutable reference
+        <ul>
+          <li><code class="language-plaintext highlighter-rouge">&amp;mut type</code> or <code class="language-plaintext highlighter-rouge">&amp;mut 'a type</code></li>
+          <li>Not <code class="language-plaintext highlighter-rouge">Copy</code></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>Raw pointer : <code class="language-plaintext highlighter-rouge">*const</code>和<code class="language-plaintext highlighter-rouge">*mut</code>
+    <ul>
+      <li>没有safety和liveness的保证</li>
+      <li><code class="language-plaintext highlighter-rouge">*const T</code> or <code class="language-plaintext highlighter-rouge">*mut T</code></li>
+      <li>deref是unsafe的</li>
+      <li>reborrow：把raw pointer转为reference, <code class="language-plaintext highlighter-rouge">&amp;*</code> 或<code class="language-plaintext highlighter-rouge">&amp;mut *</code></li>
+      <li>对DST(<a href="https://doc.rust-lang.org/reference/dynamically-sized-types.html">Dynamic Sized Type</a>) 指针的比较会比较额外的数据，对<code class="language-plaintext highlighter-rouge">Sized</code>指针的 比较只比较指针。</li>
+      <li><code class="language-plaintext highlighter-rouge">core::ptr::addr_of!</code>创建<code class="language-plaintext highlighter-rouge">*const</code>指针，</li>
+      <li><code class="language-plaintext highlighter-rouge">core::ptr::addr_of_mut!</code>创建<code class="language-plaintext highlighter-rouge">*mut</code>指针</li>
+    </ul>
+  </li>
+  <li>标准库中的Smart pointer : <code class="language-plaintext highlighter-rouge">Box&lt;T&gt;</code>,<code class="language-plaintext highlighter-rouge">Rc&lt;T&gt;</code>,<code class="language-plaintext highlighter-rouge">Ref&lt;T&gt;</code>, <code class="language-plaintext highlighter-rouge">RefMut&lt;T&gt;</code>,<code class="language-plaintext highlighter-rouge">Arc&lt;T&gt;</code>等</li>
+</ul>
+
+<h3 id="2-deref-operator">2. Deref Operator</h3>
+
+<p><a href="https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-dereference-operator">Dereference Operator的定义</a></p>
+
+<blockquote>
+  <p><strong>Syntax</strong>
+<em>DereferenceExpression</em> :
+<code class="language-plaintext highlighter-rouge">*</code> <a href="https://doc.rust-lang.org/reference/expressions.html"><em>Expression</em></a></p>
+</blockquote>
+
+<ol>
+  <li>
+    <p>当expr是<code class="language-plaintext highlighter-rouge">pointer</code>类型时，返回pointer指向的memory location。如果expr是<code class="language-plaintext highlighter-rouge">&amp;mut T</code> 或者 <code class="language-plaintext highlighter-rouge">*mut</code> 的，那么返回的memory location可以被assigned to。deref一个raw pointer是unsafe的.</p>
+  </li>
+  <li>
+    <p>当expr不是pointer类型时，<code class="language-plaintext highlighter-rouge">*x</code>等价于<code class="language-plaintext highlighter-rouge">*std::ops::Deref::deref(&amp;x)</code>或<code class="language-plaintext highlighter-rouge">*std::ops::DerefMut::deref_mut(&amp;mut x)</code></p>
+  </li>
+</ol>
+
+<h3 id="3-stdopsderef">3. <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html">std::ops::Deref</a></h3>
+
+<p>和deref operator一样。注意deref的函数签名， deref的参数是<code class="language-plaintext highlighter-rouge">&amp;ref</code>，返回值是<code class="language-plaintext highlighter-rouge">&amp;Self::Target</code>.</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">pub</span> <span class="k">trait</span> <span class="n">Deref</span> <span class="p">{</span>
+    <span class="k">type</span> <span class="n">Target</span><span class="p">:</span> <span class="o">?</span><span class="n">Sized</span><span class="p">;</span>
+    <span class="k">fn</span> <span class="nf">deref</span><span class="p">(</span><span class="o">&amp;</span><span class="k">self</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="o">&amp;</span><span class="nn">Self</span><span class="p">::</span><span class="n">Target</span><span class="p">;</span>
+<span class="p">}</span>	
+</code></pre></div></div>
+
+<p>当<code class="language-plaintext highlighter-rouge">x</code>不是pointer的时候，Deref的过程：</p>
+
+<ol>
+  <li>先对<code class="language-plaintext highlighter-rouge">x</code>取一个reference</li>
+  <li>然后再对reference调用deref函数，返回一个<code class="language-plaintext highlighter-rouge">&amp;Target</code>.</li>
+  <li>再对<code class="language-plaintext highlighter-rouge">&amp;Target</code> deref。</li>
+</ol>
+
+<p>之所以返回<code class="language-plaintext highlighter-rouge">&amp;</code>，是因为rust的ownership系统，如果返回value，则相当于把target 从self中move出去了，有时候这不是一个预期的行为。</p>
+
+<p>Coercion: 若<code class="language-plaintext highlighter-rouge">T: Deref&lt;Target = U&gt;</code>，那么<code class="language-plaintext highlighter-rouge">&amp;T</code>会被自动转换为<code class="language-plaintext highlighter-rouge">&amp;U</code>.</p>
+
+<p>比较有趣的是，rust实现了<code class="language-plaintext highlighter-rouge">&amp;T: Deref&lt;Target =T&gt;</code>，也就是<code class="language-plaintext highlighter-rouge">&amp;&amp;T</code> 自动转换为<code class="language-plaintext highlighter-rouge">&amp;T</code>。</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">#[stable(feature</span> <span class="nd">=</span> <span class="s">"rust1"</span><span class="nd">,</span> <span class="nd">since</span> <span class="nd">=</span> <span class="s">"1.0.0"</span><span class="nd">)]</span>
+<span class="nd">#[rustc_const_unstable(feature</span> <span class="nd">=</span> <span class="s">"const_deref"</span><span class="nd">,</span> <span class="nd">issue</span> <span class="nd">=</span> <span class="s">"88955"</span><span class="nd">)]</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="p">:</span> <span class="o">?</span><span class="n">Sized</span><span class="o">&gt;</span> <span class="k">const</span> <span class="n">Deref</span> <span class="k">for</span> <span class="o">&amp;</span><span class="n">T</span> <span class="p">{</span>
+    <span class="k">type</span> <span class="n">Target</span> <span class="o">=</span> <span class="n">T</span><span class="p">;</span>
+
+    <span class="nd">#[rustc_diagnostic_item</span> <span class="nd">=</span> <span class="s">"noop_method_deref"</span><span class="nd">]</span>
+    <span class="k">fn</span> <span class="nf">deref</span><span class="p">(</span><span class="o">&amp;</span><span class="k">self</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="o">&amp;</span><span class="n">T</span> <span class="p">{</span>
+        <span class="o">*</span><span class="k">self</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>所以以下代码是work的</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="n">test</span><span class="o">&lt;</span><span class="nv">'a</span><span class="o">&gt;</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="o">&amp;</span><span class="nv">'a</span> <span class="nb">str</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="o">&amp;</span><span class="nv">'a</span> <span class="nb">str</span> <span class="p">{</span>
+    <span class="o">&amp;&amp;&amp;&amp;</span><span class="n">input</span>
+<span class="p">}</span>
+<span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="n">input</span> <span class="o">=</span> <span class="nn">String</span><span class="p">::</span><span class="nf">from</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+    <span class="nf">test</span><span class="p">(</span><span class="o">&amp;</span><span class="n">input</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+
+  </div><div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function () {
+      this.page.url = 'https://power1628.github.io/rust/2022/05/14/rust-deref.html';
+      this.page.identifier = 'https://power1628.github.io/rust/2022/05/14/rust-deref.html';
+    };
+
+    (function() {
+      var d = document, s = d.createElement('script');
+
+      s.src = 'https://https-power1628-github-io.disqus.com/embed.js';
+
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript><a class="u-url" href="/rust/2022/05/14/rust-deref.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Random Thoughts</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Random Thoughts</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/power1628"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">power1628</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
